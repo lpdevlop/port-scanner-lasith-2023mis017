@@ -3,7 +3,7 @@ from datetime import datetime
 import socket
 import uuid
 
-from scapy.layers.inet import TCP, UDP, IP
+from scapy.layers.inet import TCP, UDP, IP, ICMP
 
 
 def get_local_ip():
@@ -24,6 +24,8 @@ def process_packet(packet):
 
     if packet.haslayer(TCP):
         description = f"TCP Packet. Port: {packet[TCP].dport}"
+    elif packet.haslayer(ICMP):
+        description = f"ICMP Packet | Type: {packet[ICMP].type}, Code: {packet[ICMP].code}"
     elif packet.haslayer(UDP):
         description = f"UDP Packet. Port: {packet[UDP].dport}"
     elif packet.haslayer(IP):
@@ -34,5 +36,6 @@ def process_packet(packet):
     print(f"Time: {time}, IP: {ip}, Mac Address: {mac},\nRequest: {description}\n")
 
 
-print("📡 Starting packet capture (Press Ctrl+C to stop)...")
-sniff(prn=process_packet, store=0)
+if __name__ == "__main__":
+    print("starting packet capture")
+    sniff(prn=process_packet, store=0)
